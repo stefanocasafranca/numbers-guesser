@@ -1,0 +1,130 @@
+name: Deploy Numbers Guesser to Google Cloud & Firebase
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: guesser-82795
+  REGION: us-central1
+  SERVICE_NAME: numbers-guesser-api
+
+jobs:
+  test-backend:
+    name: Test Backend (FastAPI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        run: |
+          cd backend
+          pytest -v
+
+  test-frontend:
+    name: Build & Verify Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Frontend Bundle
+        run: |
+          cd frontend
+          npm run build
+
+  deploy-backend:
+    name: Deploy Backend to Google Cloud Run
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        if: "${{ secrets.GCP_SA_KEY != '' }}"
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        if: "${{ secrets.GCP_SA_KEY != '' }}"
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Build and Deploy to Cloud Run
+        if: "${{ secrets.GCP_SA_KEY != '' }}"
+        run: |
+          cd backend
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --source . \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --allow-unauthenticated \
+            --set-env-vars FIREBASE_PROJECT_ID="${{ env.PROJECT_ID }}",ENVIRONMENT="production"
+
+  deploy-frontend:
+    name: Deploy Frontend to Firebase Hosting
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Production Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        if: "${{ secrets.GCP_SA_KEY != '' || secrets.FIREBASE_SERVICE_ACCOUNT_GUESSER_82795 != '' }}"
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GUESSER_82795 || secrets.GCP_SA_KEY }}'
+          channelId: live
+          projectId: ${{ env.PROJECT_ID }}
