@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+env/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+.git
+.gitignore
+.env
+serviceAccountKey.json

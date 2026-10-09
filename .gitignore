@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.venv/
+env/
+venv/
+
+# Environment and Secret files
+.env
+.env*.local
+*.local
+serviceAccountKey.json
+*credentials*.json
+
+# Build outputs
+frontend/dist/
+dist/
+build/
+*.egg-info/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Firebase emulators and logs
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+.firebase/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
