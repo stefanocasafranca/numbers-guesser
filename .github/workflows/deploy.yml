@@ -66,25 +66,27 @@ jobs:
     needs: [test-backend, test-frontend]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         id: auth
+        if: env.GCP_SA_KEY != ''
         uses: google-github-actions/auth@v2
-        if: "${{ secrets.GCP_SA_KEY != '' }}"
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
+        if: env.GCP_SA_KEY != ''
         uses: google-github-actions/setup-gcloud@v2
-        if: "${{ secrets.GCP_SA_KEY != '' }}"
         with:
           project_id: ${{ env.PROJECT_ID }}
 
       - name: Build and Deploy to Cloud Run
-        if: "${{ secrets.GCP_SA_KEY != '' }}"
+        if: env.GCP_SA_KEY != ''
         run: |
           cd backend
           gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -99,6 +101,8 @@ jobs:
     needs: [test-backend, test-frontend]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    env:
+      FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GUESSER_82795 || secrets.GCP_SA_KEY }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -121,10 +125,10 @@ jobs:
           npm run build
 
       - name: Deploy to Firebase Hosting
+        if: env.FIREBASE_KEY != ''
         uses: FirebaseExtended/action-hosting-deploy@v0
-        if: "${{ secrets.GCP_SA_KEY != '' || secrets.FIREBASE_SERVICE_ACCOUNT_GUESSER_82795 != '' }}"
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GUESSER_82795 || secrets.GCP_SA_KEY }}'
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ env.FIREBASE_KEY }}
           channelId: live
           projectId: ${{ env.PROJECT_ID }}
