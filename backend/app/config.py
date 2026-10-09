@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Auth and Local Development
     DEV_BYPASS_AUTH: bool = False
-    DEV_DEFAULT_USER_ID: str = "dev-user-123"
+    DEV_DEFAULT_USER_ID: str = "dev-player-1"
     DEV_DEFAULT_USER_EMAIL: str = "dev@numbersguesser.local"
 
     # CORS Configuration
